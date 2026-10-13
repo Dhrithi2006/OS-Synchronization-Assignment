@@ -1,0 +1,94 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Readers-Writers Animated Simulation</title>
+        <style>
+            body { font-family: Arial, sans-serif; background-color: #f4f4f9; padding: 20px; text-align: center; }
+            .container { display: flex; justify-content: space-around; margin-top: 20px; }
+            .zone { width: 30%; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); min-height: 200px; }
+            h3 { border-bottom: 2px solid #333; padding-bottom: 5px; }
+            .actor { padding: 10px; margin: 5px; border-radius: 5px; font-weight: bold; color: white; display: inline-block; transition: all 0.5s ease; }
+            .reader { background-color: #0056b3; }
+            .writer { background-color: #d9534f; }
+            #controls { margin-bottom: 20px; }
+            button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #28a745; color: white; border: none; border-radius: 5px; }
+            button:disabled { background: #ccc; }
+            .stats { font-size: 1.2em; margin: 10px; font-weight: bold; }
+            #log { margin-top: 20px; text-align: left; background: #fff; padding: 10px; height: 150px; overflow-y: auto; border: 1px solid #ddd; }
+        </style>
+    </head>
+    <body>
+        <h2>Readers-Writers Synchronization (Monitor)</h2>
+        
+        <div id="controls">
+            <button id="startBtn" onclick="startSimulation()">Start Simulation</button>
+            <button onclick="location.reload()">Reset</button>
+        </div>
+        
+        <div class="stats">Shared Data: <span id="sharedData">0</span> | Active Readers: <span id="activeReaders">0</span></div>
+
+        <div class="container">
+            <div class="zone" id="waitingZone">
+                <h3>Waiting Room (Monitor Wait Queue)</h3>
+            </div>
+            <div class="zone" id="criticalZone" style="border: 3px solid #ffc107;">
+                <h3>Critical Section</h3>
+            </div>
+            <div class="zone" id="finishedZone">
+                <h3>Finished</h3>
+            </div>
+        </div>
+
+        <div id="log"><strong>Event Log:</strong><br></div>
+
+        <script>
+            const events = [{"time": "00:40:09.706", "actor": "Reader 5", "action": "Waiting to read", "data": 0, "readers": 0}, {"time": "00:40:09.706", "actor": "Reader 5", "action": "Reading (Entered Critical Section)", "data": 0, "readers": 1}, {"time": "00:40:09.706", "actor": "Writer 1", "action": "Waiting to write", "data": 0, "readers": 1}, {"time": "00:40:09.707", "actor": "Reader 2", "action": "Waiting to read", "data": 0, "readers": 1}, {"time": "00:40:09.707", "actor": "Writer 2", "action": "Waiting to write", "data": 0, "readers": 1}, {"time": "00:40:09.708", "actor": "Reader 1", "action": "Waiting to read", "data": 0, "readers": 1}, {"time": "00:40:09.708", "actor": "Reader 4", "action": "Waiting to read", "data": 0, "readers": 1}, {"time": "00:40:09.709", "actor": "Reader 3", "action": "Waiting to read", "data": 0, "readers": 1}, {"time": "00:40:09.829", "actor": "Reader 5", "action": "Finished and Left", "data": 0, "readers": 0}, {"time": "00:40:09.862", "actor": "Writer 1", "action": "Writing (Entered Critical Section)", "data": 10, "readers": 0}, {"time": "00:40:10.434", "actor": "Writer 1", "action": "Finished and Left", "data": 10, "readers": 0}, {"time": "00:40:10.435", "actor": "Writer 2", "action": "Writing (Entered Critical Section)", "data": 20, "readers": 0}, {"time": "00:40:10.875", "actor": "Writer 2", "action": "Finished and Left", "data": 20, "readers": 0}, {"time": "00:40:10.875", "actor": "Reader 2", "action": "Reading (Entered Critical Section)", "data": 20, "readers": 1}, {"time": "00:40:10.875", "actor": "Reader 4", "action": "Reading (Entered Critical Section)", "data": 20, "readers": 2}, {"time": "00:40:10.876", "actor": "Reader 3", "action": "Reading (Entered Critical Section)", "data": 20, "readers": 3}, {"time": "00:40:10.876", "actor": "Reader 1", "action": "Reading (Entered Critical Section)", "data": 20, "readers": 4}, {"time": "00:40:11.060", "actor": "Reader 3", "action": "Finished and Left", "data": 20, "readers": 3}, {"time": "00:40:11.145", "actor": "Reader 4", "action": "Finished and Left", "data": 20, "readers": 2}, {"time": "00:40:11.165", "actor": "Reader 1", "action": "Finished and Left", "data": 20, "readers": 1}, {"time": "00:40:11.189", "actor": "Reader 2", "action": "Finished and Left", "data": 20, "readers": 0}];
+            let currentIndex = 0;
+            let timer;
+
+            function updateUI(event) {
+                let actorId = event.actor.replace(/\s+/g, '_');
+                let actorEl = document.getElementById(actorId);
+                
+                if (!actorEl) {
+                    actorEl = document.createElement('div');
+                    actorEl.id = actorId;
+                    actorEl.className = 'actor ' + (event.actor.includes('Reader') ? 'reader' : 'writer');
+                    actorEl.innerText = event.actor;
+                }
+
+                if (event.action.includes('Waiting')) {
+                    document.getElementById('waitingZone').appendChild(actorEl);
+                } else if (event.action.includes('Entered')) {
+                    document.getElementById('criticalZone').appendChild(actorEl);
+                } else if (event.action.includes('Finished')) {
+                    document.getElementById('finishedZone').appendChild(actorEl);
+                }
+
+                document.getElementById('sharedData').innerText = event.data;
+                document.getElementById('activeReaders').innerText = event.readers;
+
+                let logDiv = document.getElementById('log');
+                logDiv.innerHTML += `[${event.time}] ${event.actor} - ${event.action}<br>`;
+                logDiv.scrollTop = logDiv.scrollHeight;
+            }
+
+            function startSimulation() {
+                document.getElementById('startBtn').disabled = true;
+                timer = setInterval(() => {
+                    if (currentIndex < events.length) {
+                        updateUI(events[currentIndex]);
+                        currentIndex++;
+                    } else {
+                        clearInterval(timer);
+                        let logDiv = document.getElementById('log');
+                        logDiv.innerHTML += "<strong>--- Execution Complete ---</strong><br>";
+                    }
+                }, 800); 
+            }
+        </script>
+    </body>
+    </html>
+    
